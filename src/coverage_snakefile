@@ -1,0 +1,31 @@
+import os
+grouphome = os.environ['GROUPHOME']
+ISOLATES = [i for i in open('/grp/valafar/data/depot/assembly/south_africa/isolates.txt').read().split('\n') if len(i) > 0]
+
+rule all:
+    input:
+        expand(grouphome + "/data/depot/assembly/south_africa/{isolate}/coverage_depth/{isolate}_coverage.csv", isolate=ISOLATES)
+rule alignment:
+    input:
+        input1= grouphome +"/data/depot/assembly/south_africa/{isolate}/assembly/circ/06.fixstart.fasta",
+        input2= grouphome + "/data/depot/assembly/south_africa/{isolate}/{isolate}_filtered_reads.fastq"
+    output:
+        grouphome +"/data/depot/assembly/south_africa/{isolate}/coverage_depth/aln.sam"
+    shell:
+        """/grp/valafar/data/depot/nanopore_assembly/maryam/SRR23086714/tools/minimap2-2.26_x64-linux/minimap2 -Y -ax map-ont {input.input1} {input.input2} > {output}"""
+rule sort:
+    input:
+        grouphome +"/data/depot/assembly/south_africa/{isolate}/coverage_depth/aln.sam"
+    output:
+        grouphome +"/data/depot/assembly/south_africa/{isolate}/coverage_depth/aln_sorted_primary.bam"
+    shell:
+        """samtools sort -O bam -o {output} {input}"""
+
+rule coverage:
+    input:
+        grouphome +"/data/depot/assembly/south_africa/{isolate}/coverage_depth/aln_sorted_primary.bam"
+    output:
+        grouphome +"/data/depot/assembly/south_africa/{isolate}/coverage_depth/{isolate}_coverage.csv"
+    shell:
+        """samtools depth {input} > {output}"""
+
