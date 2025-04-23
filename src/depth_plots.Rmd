@@ -1,0 +1,28 @@
+
+```{r}
+library(ggplot2)
+# Read the TSV file into a data frame
+data <- read.delim("FAX57845_combined_depths.txt", header = F)
+
+```
+
+```{r}
+contig_1 <- subset(data, V1 == "contig_1")
+names(contig_1)[2:3] <- c("genome_position","coverage")
+```
+```{r}
+# Plot coverage across the genome as a line graph
+line_plot <- ggplot(contig_1, aes(x = genome_position, y = coverage)) +
+             geom_point() +
+             labs(title = "Coverage Across the Genome", x = "Genome Position", y = "Coverage")
+ggsave("coverage_across_genome.png")
+# Plot the distribution of coverage values
+distribution_plot <- ggplot(contig_1, aes(x = coverage)) +
+                    geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+                    labs(title = "Distribution of Coverage Values", x = "Coverage", y = "Frequency")
+ggsave("coverage_frequency.png")
+
+# Display both plots
+print(line_plot)
+print(distribution_plot)
+```
