@@ -1,0 +1,123 @@
+---
+title: "depth stats and plots"
+output: html_document
+date: "2024-07-29"
+---
+
+```{r}
+#import necessary libraries
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+
+```
+
+```{r}
+#path to the directory containing TSV files
+path <- "Y:/data/depot/assembly/south_africa_broken_dnaA/depth"
+
+#all converage files generated from samtools depth
+filenames <- list.files(path, pattern="*.tsv", full.names=TRUE)
+
+# Define start position and end offset for file renaming
+start_pos <- 55
+end_offset <- 10
+
+# Function to extract substring from position 55 to 10 characters from the end
+extract_name <- function(filename, start_pos, end_offset) {
+  file_length <- nchar(filename)
+  end_pos <- file_length - end_offset
+  substr(filename, start_pos, end_pos)
+}
+
+# Read each TSV file, extract the third column, and store data in a list
+data_list <- lapply(filenames, function(file) {
+  df <- read.delim(file)
+  df[, 3]  # Extract the third column
+})
+
+# Apply the function to each filename and set names for data_list
+file_names <- sapply(filenames, extract_name, start_pos = start_pos, end_offset = end_offset)
+names(data_list) <- file_names
+
+# Initialize data frame to store results
+coverage_data <- data.frame(
+  Isolate = character(),
+  Mean_Read_Coverage = numeric(),
+  Standard_Deviation = numeric(),
+  stringsAsFactors = FALSE
+)
+
+histograms <- list()
+
+# Process each dataset
+for (name in names(data_list)) {
+  data <- data_list[[name]]
+  
+  # Calculate mean and standard deviation
+  mean_value <- mean(data, na.rm = TRUE)
+  sd_value <- sd(data, na.rm = TRUE)
+  
+  # Append to results data frame
+  coverage_data <- rbind(coverage_data, data.frame(
+    Isolate = name,
+    Mean_Read_Coverage = mean_value,
+    Standard_Deviation = sd_value
+  ))
+
+}
+
+# Optionally, save the results to a CSV file
+#write.csv(coverage_data, file.path(path, "summary_statistics.csv"), row.names = FALSE)
+
+#print(histograms)
+
+```
+```{r}
+# Combine all coverage data into a single data frame
+coverage_combined <- do.call(rbind, lapply(names(data_list), function(name) {
+  data.frame(
+    Coverage = data_list[[name]],
+    Isolate = name
+  )
+}))
+```
+```{r}
+# Create a boxplot using ggplot2
+p <- ggplot(coverage_combined, aes(x = Isolate, y = Coverage)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(hjust = 0.5)) +
+  labs(
+    title = "Coverage Distribution by Isolate",
+    x = "Isolate",
+    y = "Coverage per Position"
+  ) + ylim(0,200)
+ggsave("Z:/time_course_BDQ/coverage/SA_coverage_boxplot.png")
+
+```
+
+```{r}
+library(openxlsx)
+write.xlsx(coverage_data, 'SA_coverage_stats.xlsx')
+
+```
+
+```{r}
+  #ignore
+  # Create a histogram plot
+  p <- ggplot(data = data.frame(Value = data), aes(x = Value)) +
+    geom_histogram(binwidth = 1) +
+    labs(title = paste("Coverage Depth -", name),
+         x = "Depth at given position",
+         y = "Frequency") +
+    theme_grey()
+  #, fill = "blue", color = "black"
+  # Save the plot to a file
+  plot_filename <- file.path(path, paste0(name, "_depth.png"))
+  #ggsave(plot_filename, plot = p)
+  
+  # Store the plot filename in the histograms list
+  histograms[[name]] <- plot_filename
+```
+
